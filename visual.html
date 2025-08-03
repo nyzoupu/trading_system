@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>K线 + 指标可视化</title>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5"></script>
+</head>
+<body>
+  <div id="chart" style="width: 100%; height: 900px;"></div>
+  <script>
+    async function loadData() {
+      const response = await fetch('complete_dataset_ETHUSDT_4h_squeeze_luxalgo_advanced.csv');
+      const text = await response.text();
+      const lines = text.trim().split('\n');
+      const headers = lines[0].split(',');
+
+      const data = lines.slice(1).map(line => {
+        const values = line.split(',');
+        return headers.reduce((obj, h, i) => {
+          obj[h] = isNaN(values[i]) ? values[i] : parseFloat(values[i]);
+          return obj;
+        }, {});
+      });
+
+      const categoryData = data.map(d => d.open_time);
+      const klineValues = data.map(d => [d.open, d.close, d.low, d.high]);
+
+      const labelMap = {};
+      data.forEach(d => {
+        if (d.label) labelMap[d.open_time] = d.label;
+      });
+
+      const ma5 = data.map(d => d.MA_5);
+      const ma10 = data.map(d => d.MA_10);
+      const ma20 = data.map(d => d.MA_20);
+      const ma42 = data.map(d => d.MA_42);
+
+      const vol = data.map(d => d.volume);
+      const volMA5 = data.map(d => d.Volume_MA_5);
+
+      const k = data.map(d => d.K);
+      const d_ = data.map(d => d.D);
+      const j = data.map(d => d.J);
+
+      const rsi6 = data.map(d => d.RSI6);
+      const rsi12 = data.map(d => d.RSI12);
+      const rsi24 = data.map(d => d.RSI24);
+
+      const cmacd_macd = data.map(d => d.CMACD_macd);
+      const cmacd_signal = data.map(d => d.CMACD_signal);
+      const cmacd_histogram = data.map(d => d.CMACD_histogram);
+      const cmacd_macd_color = data.map(d => d.CMACD_macd_color);
+      const cmacd_hist_color = data.map(d => d.CMACD_hist_color);
+
+      const getColor = (val, pos) => {
+        if (val === 1) return pos === 'macd' ? '#ec0000' : '#FFD700';
+        if (val === -1) return pos === 'macd' ? '#00da3c' : '#1E90FF';
+        return '#888888';
+      };
+
+      const bosHigh = data.filter(d => d.SMC_is_BOS_High === "True")
+                          .map(d => [d.open_time, d.SMC_BOS_High_Value]);
+      const bosLow = data.filter(d => d.SMC_is_BOS_Low === "True")
+                         .map(d => [d.open_time, d.SMC_BOS_Low_Value]);
+
+      const labelPoints = data
+        .filter(d => d.label)
+        .map(d => ({
+          value: [d.open_time, d.high * 1.01],
+          label: {
+            show: true,
+            formatter: d.label.toString(),
+            color: '#222',
+            position: 'top'
+          },
+          symbolSize: 1,
+          itemStyle: { color: 'transparent' }
+        }));
+
+      const option = {
+        title: { text: 'K线图 + 多指标', left: 'center' },
+        tooltip: { trigger: 'axis', axisPointer: { type: 'cross' } },
+        legend: {
+          data: ['K线', 'MA5', 'MA10', 'MA20', 'MA42', 'VOL', 'VOL_MA5', 'K', 'D', 'J', 'RSI6', 'RSI12', 'RSI24', 'CMACD_histogram', 'CMACD_macd', 'CMACD_signal', 'BOS High', 'BOS Low', 'label'],
+          top: 30
+        },
+        axisPointer: { link: [{ xAxisIndex: 'all' }] },
+        grid: [
+          { left: '8%', right: '2%', height: '38%' },
+          { left: '8%', right: '2%', top: '52%', height: '8%' },
+          { left: '8%', right: '2%', top: '62%', height: '10%' },
+          { left: '8%', right: '2%', top: '76%', height: '7%' },
+          { left: '8%', right: '2%', top: '86%', height: '7%' }
+        ],
+        xAxis: Array(5).fill(0).map((_, i) => ({
+          type: 'category',
+          data: categoryData,
+          gridIndex: i,
+          boundaryGap: true,
+          axisLine: { onZero: false },
+          splitLine: { show: false },
+          min: 'dataMin',
+          max: 'dataMax'
+        })),
+        yAxis: Array(5).fill(0).map((_, i) => ({
+          gridIndex: i,
+          scale: true,
+          splitArea: { show: true }
+        })),
+        dataZoom: [
+          { type: 'inside', xAxisIndex: [0,1,2,3,4], start: 80, end: 100 },
+          { show: true, type: 'slider', xAxisIndex: [0,1,2,3,4], top: '95%', start: 80, end: 100 }
+        ],
+        series: [
+          { name: 'K线', type: 'candlestick', data: klineValues },
+          { name: 'MA5', type: 'line', data: ma5, xAxisIndex: 0, yAxisIndex: 0 },
+          { name: 'MA10', type: 'line', data: ma10, xAxisIndex: 0, yAxisIndex: 0 },
+          { name: 'MA20', type: 'line', data: ma20, xAxisIndex: 0, yAxisIndex: 0 },
+          { name: 'MA42', type: 'line', data: ma42, xAxisIndex: 0, yAxisIndex: 0 },
+          { name: 'label', type: 'scatter', data: labelPoints, xAxisIndex: 0, yAxisIndex: 0, z: 10 },
+          { name: 'BOS High', type: 'scatter', data: bosHigh, xAxisIndex: 0, yAxisIndex: 0, symbolSize: 8, itemStyle: { color: '#e74c3c' } },
+          { name: 'BOS Low', type: 'scatter', data: bosLow, xAxisIndex: 0, yAxisIndex: 0, symbolSize: 8, itemStyle: { color: '#3498db' } },
+          { name: 'CMACD_histogram', type: 'bar', data: cmacd_histogram.map((v, i) => ({ value: v, itemStyle: { color: getColor(cmacd_hist_color[i], 'hist') } })), xAxisIndex: 1, yAxisIndex: 1 },
+          { name: 'CMACD_macd', type: 'line', data: cmacd_macd, xAxisIndex: 1, yAxisIndex: 1, lineStyle: { color: '#ec0000' } },
+          { name: 'CMACD_signal', type: 'line', data: cmacd_signal, xAxisIndex: 1, yAxisIndex: 1, lineStyle: { color: '#1E90FF' } },
+          { name: 'VOL', type: 'bar', data: vol, xAxisIndex: 2, yAxisIndex: 2 },
+          { name: 'VOL_MA5', type: 'line', data: volMA5, xAxisIndex: 2, yAxisIndex: 2 },
+          { name: 'K', type: 'line', data: k, xAxisIndex: 3, yAxisIndex: 3 },
+          { name: 'D', type: 'line', data: d_, xAxisIndex: 3, yAxisIndex: 3 },
+          { name: 'J', type: 'line', data: j, xAxisIndex: 3, yAxisIndex: 3 },
+          { name: 'RSI6', type: 'line', data: rsi6, xAxisIndex: 4, yAxisIndex: 4 },
+          { name: 'RSI12', type: 'line', data: rsi12, xAxisIndex: 4, yAxisIndex: 4 },
+          { name: 'RSI24', type: 'line', data: rsi24, xAxisIndex: 4, yAxisIndex: 4 }
+        ]
+      };
+
+      echarts.init(document.getElementById('chart')).setOption(option);
+    }
+
+    loadData();
+  </script>
+</body>
+</html>

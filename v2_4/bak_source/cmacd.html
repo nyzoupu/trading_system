@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trading Chart</title>
+  <!-- Include ECharts library -->
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.0/dist/echarts.min.js"></script>
+  <style>
+    /* Set the chart container's size */
+    #main {
+      width: 100%;
+      height: 800px;
+    }
+  </style>
+</head>
+<body>
+  <div id="main"></div>
+
+  <script>
+    // Initialize ECharts
+    var myChart = echarts.init(document.getElementById('main'));
+
+    // Your provided JavaScript code here, after modifying it for proper data and setup
+    const option = {
+      title: { text: 'K线+指标全览', left: 'center' },
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: { type: 'cross' },
+        formatter: function(params) {
+          let openTime = '';
+          for (let i = 0; i < params.length; ++i) {
+            if (params[i].seriesType === 'candlestick') {
+              openTime = params[i].axisValue;
+              break;
+            }
+          }
+          if (!openTime && params.length > 0) {
+            openTime = params[0].axisValue;
+          }
+          const label = labelMap[openTime];
+          let html = `<div><strong>${openTime}</strong></div>`;
+          for (let i = 0; i < params.length; ++i) {
+            const p = params[i];
+            if (p.seriesType === 'candlestick') {
+              html += `<div><span style="display:inline-block;margin-right:4px;border-radius:10px;width:10px;height:10px;background:${p.color};"></span><b>K线</b><br/>开盘: ${p.data[0]}<br/>收盘: ${p.data[1]}<br/>最低: ${p.data[2]}<br/>最高: ${p.data[3]}<br/></div>`;
+            } else if (p.seriesName === 'CMACD_histogram') {
+              html += `<div><span style="display:inline-block;margin-right:4px;border-radius:10px;width:10px;height:10px;background:${p.color};"></span>CMACD_histogram: ${p.data.value !== undefined ? p.data.value : p.data}</div>`;
+            }
+          }
+          if (label !== undefined && label !== null && label !== "") {
+            html += `<div style="margin-top:4px;"><b>label:</b> ${label}</div>`;
+          }
+          return html;
+        }
+      },
+      series: [
+        {
+          name: 'K线',
+          type: 'candlestick',
+          data: klineValues,
+          itemStyle: {
+            color: '#ec0000',
+            color0: '#00da3c',
+            borderColor: '#ec0000',
+            borderColor0: '#00da3c'
+          }
+        },
+        // Other series configurations...
+      ]
+    };
+
+    // Set the options and render the chart
+    myChart.setOption(option);
+  </script>
+</body>
+</html>
